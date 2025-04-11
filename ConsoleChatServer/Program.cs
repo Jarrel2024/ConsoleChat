@@ -55,6 +55,7 @@ server.PacketReceived += e =>
         Sender = ((ChatMessagePacket)e.Packet).Sender ?? "",
     });
     db.SaveChangesAsync();
+    (e.Packet as ChatMessagePacket)!.Sender = Users[e.Client.Id].Username;
     foreach (var client in server.Clients)
     {
         if (client.Socket == e.Client.Socket) continue;

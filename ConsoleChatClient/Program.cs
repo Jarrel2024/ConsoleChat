@@ -1,4 +1,5 @@
-﻿using PacketTcp;
+﻿using ConsoleChatClient;
+using PacketTcp;
 using Shared;
 using System.Text.Json;
 using Tomlyn;
@@ -60,6 +61,7 @@ else
 string path = $"{config.Remote}-chat.db";
 
 Console.Clear();
+ClientRenderer renderer = new ClientRenderer();
 
 SharedData data = new SharedData();
 
@@ -113,26 +115,30 @@ foreach (var message in response1.Messages)
 
 while (client.IsConnected)
 {
-    Console.CursorLeft = 0;
-    Console.CursorTop = Console.WindowTop;
-    string? message = Console.ReadLine();
-    Console.CursorLeft = 0;
-    Console.CursorTop = Console.WindowTop;
-    Console.Write(new string(' ', Console.BufferWidth));
-    if (string.IsNullOrEmpty(message)) continue;
-    var packet = new ChatMessagePacket { Message = message, Sender = config.Username };
-    client.Send(packet);
-    AddToChat(packet);
-    AddToHistory(packet);
+    // 将光标移动到输入行
+    Console.SetCursorPosition(0, Console.WindowHeight - 1);
+    Console.Write("输入: ");
+    string? input = Console.ReadLine()?.Trim();
+    
+    if (string.IsNullOrEmpty(input))
+    {
+        renderer.Render();
+        continue; // 忽略空输入
+    }
+    
+    if (input.Equals("/exit", StringComparison.OrdinalIgnoreCase))
+    {
+        break; // 输入 /exit 退出程序
+    }
+
+    // 添加用户输入的消息
+    renderer.AddMessage(new Message(input,config.Username));
+    client.Send(new ChatMessagePacket { Message = input,Sender=config.Username});
 }
 
 void AddToChat(ChatMessagePacket packet)
 {
-    Console.CursorTop = ++top;
-    Console.CursorLeft = 0;
-    Console.WriteLine($"<{packet.Sender}>: {packet.Message}");
-    Console.CursorLeft = 0;
-    Console.CursorTop = Console.WindowTop;
+    renderer.AddMessage(new Message(packet.Message,packet.Sender??""));
 }
 
 void AddToHistory(ChatMessagePacket packet)
