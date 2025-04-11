@@ -1,0 +1,12 @@
+﻿using PacketTcp;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Shared;
+public class LoginResultPacket : BasePacket
+{
+    public bool Success { get; set; } = false;
+}
