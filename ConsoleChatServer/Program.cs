@@ -1,4 +1,5 @@
 ﻿using ConsoleChatServer;
+using Microsoft.Extensions.Logging;
 using PacketTcp;
 using PacketTcp.Events;
 using Shared;
@@ -11,7 +12,16 @@ ChatDbContext db = new ChatDbContext();
 
 Dictionary<Guid, User> Users = [];
 
-PacketServer server = new PacketServer(25565,data.Manager);
+ILoggerFactory factory = LoggerFactory.Create(action =>
+{
+    action.AddSimpleConsole(options =>
+    {
+        options.SingleLine = true;
+    });
+    action.SetMinimumLevel(LogLevel.Debug);
+});
+
+PacketServer server = new PacketServer(25565,data.Manager,new Logger<Program>(factory));
 server.ClientConnected += c =>
 {
     Console.WriteLine($"Client {c.Id} connected");

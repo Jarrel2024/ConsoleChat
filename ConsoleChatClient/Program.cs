@@ -1,6 +1,8 @@
 ﻿using ConsoleChatClient;
+using Microsoft.Extensions.Logging;
 using PacketTcp;
 using Shared;
+using System.Net;
 using System.Text.Json;
 using Tomlyn;
 
@@ -21,14 +23,11 @@ else
         Console.WriteLine("Invalid address");
         return;
     }
-    string[] strings = remoteAddress.Split(':');
-    if (strings.Length > 2)
-    {
-        Console.WriteLine("Invalid address");
-        return;
-    }
-    int port = strings.Length == 2 ? int.Parse(strings[1]) : 25565;
-    string address = strings[0];
+
+    IPAddress.Parse(remoteAddress);
+
+    int port = 25565;
+    string address = remoteAddress;
 
     Console.Write("Username:");
     string? username = Console.ReadLine();
@@ -58,14 +57,22 @@ else
     sw.Write(Toml.FromModel(config));
 }
 
-string path = $"{config.Remote}-chat.db";
+string path = $"{config.Remote}-chat.db".Replace(':','-');
 
 Console.Clear();
 ClientRenderer renderer = new ClientRenderer();
 
 SharedData data = new SharedData();
 
-PacketClient client = new PacketClient(data.Manager);
+ILoggerFactory factory = LoggerFactory.Create(action =>
+{
+    action.AddSimpleConsole(options =>
+    {
+        options.SingleLine = true;
+    });
+    action.SetMinimumLevel(LogLevel.Debug);
+});
+PacketClient client = new PacketClient(data.Manager,new Logger<Program>(factory));
 
 client.PacketReceived += e =>
 {
@@ -77,18 +84,20 @@ client.PacketReceived += e =>
 };
 client.Connect(config.Remote, config.Port);
 
+Console.WriteLine($"Login");
 var res = await client.SendAsync<LoginResultPacket>(new ConnectPacket
 {
     Username = config.Username,
     Password = config.Password,
-});
+},-1);
 
-if (!res.Success)
+if (res==null||!res.Success)
 {
     Console.WriteLine("Invalid username or password");
     client.Stop();
     return;
 }
+Console.WriteLine($"Success");
 
 int history = 0;
 if (!File.Exists(path))
@@ -105,8 +114,10 @@ else
     history = lines.Length;
 }
 
-RequestChatMessageLengthPacket response = await client.SendAsync<RequestChatMessageLengthPacket>(new RequestChatMessageLengthPacket());
-UpdateChatMessagePacket response1 = await client.SendAsync<UpdateChatMessagePacket>(new UpdateChatMessagePacket() { From = history, To = response.Length });
+Console.WriteLine($"Reuest");
+RequestChatMessageLengthPacket? response = await client.SendAsync<RequestChatMessageLengthPacket>(new RequestChatMessageLengthPacket());
+UpdateChatMessagePacket? response1 = await client.SendAsync<UpdateChatMessagePacket>(new UpdateChatMessagePacket() { From = history, To = response.Length });
+Console.WriteLine(13);
 foreach (var message in response1.Messages)
 {
     AddToChat(message);
